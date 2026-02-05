@@ -1,68 +1,109 @@
-<script>
+<script setup>
+import { ref, onMounted, computed } from 'vue';
 
+// Refs
+const form = ref({ id: null, nome: '', telefone: '', maiorIdade: false });
+const lista = ref([]);
+const termoBusca = ref(''); 
 
+// Funções
+function criarUsuario() {
+  const validadorId = lista.value.findIndex(function (item) {
+    return item.id === form.value.id;
+  });
+
+  if (validadorId !== -1) {
+    lista.value[validadorId] = { ...form.value };
+  } else {
+    const novoUsuario = { ...form.value, id: Date.now() };
+    lista.value.push(novoUsuario);
+  }
+
+  persistirDados();
+  limparFormulario();
+}
+
+function editar(item) {
+  form.value = { ...item };
+}
+
+function excluir(id) {
+  lista.value = lista.value.filter(function (item) {
+    return item.id !== id;
+  });
+  persistirDados();
+}
+
+// LocalStorage
+function persistirDados() {
+  localStorage.setItem('minhaLista', JSON.stringify(lista.value));
+}
+
+function limparFormulario() {
+  form.value = { id: null, nome: '', telefone: '', maiorIdade: false };
+}
+
+// Carregar página
+onMounted(function () {
+  const salvo = localStorage.getItem('minhaLista');
+  if (salvo) {
+    lista.value = JSON.parse(salvo);
+  }
+});
+
+// Filtro
+const listaFiltrada = computed(function () {
+  return lista.value.filter(function (item) {
+    return item.nome.toLowerCase().includes(termoBusca.value.toLowerCase());
+  });
+});
 </script>
+
+
 <template>
-  <form class="formularioCadastro">
+  <form @submit.prevent="criarUsuario" class="formularioCadastro p-3 border rounded">
     <div class="mb-3">
       <label class="form-label">Nome:</label>
-      <input type="text" class="form-control" id="inputNome">
+      <input v-model="form.nome" type="text" class="form-control">
     </div>
     <div class="mb-3">
       <label class="form-label">Telefone</label>
-      <input type="number" class="form-control" id="inputTelefone">
+      <input v-model="form.telefone" type="text" class="form-control">
     </div>
-    <div class="mb-3 form-check"> 
-      <label class="form-check-label" >Se for maior de idade marque a caixa</label>
-      <input type="checkbox" class="form-check-input" id="inputMaiorIdade">
+    <div class="mb-3 form-check">
+      <input v-model="form.maiorIdade" type="checkbox" class="form-check-input" id="inputMaiorIdade">
+      <label class="form-check-label" for="inputMaiorIdade">Maior de idade</label>
     </div>
-    <button type="submit" class="btn btn-primary">Adicionar</button>
+
+    <button type="submit" class="btn btn-primary">
+      {{ form.id ? 'Salvar Alteração' : 'Adicionar' }}
+    </button>
   </form>
-  <nav class="navbar bg-body-tertiary">
+
+  <nav class="navbar bg-body-tertiary mt-3">
     <div class="container-fluid">
-      <a class="navbar-brand">Pesquisar por</a>
-      <form class="d-flex" role="search">
-        <input v-model="nome" class="form-control me-2" type="search" placeholder="Nome" aria-label="Nome" />
-        <input v-model="cpf" class="form-control me-2" type="search" placeholder="CPF" aria-label="Cpf" />
-        <button class="btn btn-outline-success" type="submit">Search</button>
-      </form>
+      <input v-model="termoBusca" class="form-control" type="search" placeholder="Pesquisar por nome">
     </div>
   </nav>
-  <table class="table">
+
+  <table class="table mt-3">
     <thead>
       <tr>
-        <th scope="col">#</th>
-        <th scope="col">Nome</th>
-        <th scope="col">Telefone</th>
-        <th scope="col">Maior idade</th>
-        <th scope="col">Editar</th>
-        <th scope="col">Excluir</th>
+        <th>Nome</th>
+        <th>Telefone</th>
+        <th>Maior idade</th>
+        <th>Ações</th>
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <th scope="row">1</th>
-        <td>Mark</td>
-        <td>Otto</td>
-        <td>@mdo</td>
-        <td><button>Editar</button></td>
-        <td><button>Excluir</button></td>
-      </tr>
-      <tr>
-        <th scope="row">2</th>
-        <td>Jacob</td>
-        <td>Thornton</td>
-        <td>@fat</td>
-        <td><button>Editar</button></td>
-        <td><button>Excluir</button></td>
-      </tr>
-      <tr>
-        <th scope="row">3</th>
-        <td>John</td>
-        <td>Doe</td>
-        <td>@social</td>
-        <td><button>Editar</button></td>
-        <td><button>Excluir</button></td>
+      <tr v-for="item in listaFiltrada" :key="item.id">
+        <td>{{ item.nome }}</td>
+        <td>{{ item.telefone }}</td>
+        <td>{{ item.maiorIdade ? 'Sim' : 'Não' }}</td>
+        <td>
+          <button @click="editar(item)" class="btn btn-sm btn-outline-primary me-2">Editar</button>
+          <button @click="excluir(item.id)" class="btn btn-sm btn-outline-danger">Excluir</button>
+        </td>
       </tr>
     </tbody>
   </table>
